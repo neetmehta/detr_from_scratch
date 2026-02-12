@@ -1,0 +1,11 @@
+dataset:
+  name: CarlaDataset
+  root_dir: F:\CARLA_0.9.16\PythonAPI\carla_data_tools\carla_dataset
+  img_size: [224, 224]
+
+# =========================
+# Training Configuration
+# =========================
+
+runtime:
+  device: cuda   # auto | cpu | cuda

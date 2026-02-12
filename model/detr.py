@@ -1,0 +1,29 @@
+import torch.nn as nn
+from .layers import MLP
+
+class DETR(nn.Module):
+    def __init__(self, backbone, pos_embd, transformer, hidden_dim=512, query_dim=100, num_classes=8):
+        super(DETR, self).__init__()
+        self.backbone = backbone
+        self.pos_embd = pos_embd
+        self.transformer = transformer
+        self.conv_block = nn.Conv2d(backbone.num_channels, hidden_dim, kernel_size=1)
+        self.query_embed = nn.Embedding(query_dim, hidden_dim)
+        self.class_embed = nn.Linear(hidden_dim, num_classes+1)
+        self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
+        
+
+    def forward(self, x, mask=None):
+        
+        features = self.backbone(x, mask)
+        x = features['feats']
+        mask = features['mask']
+        pos = self.pos_embd(x, mask)
+        x = self.conv_block(x)
+        bs, c, h, w = x.shape
+        hs, memory = self.transformer(x, mask, self.query_embed, pos)
+        hs, memory = hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
+        obj_class = self.class_embed(hs).sigmoid()
+        bbox = self.bbox_embed(hs)
+
+        return dict(obj_class=obj_class[-1], bbox=bbox[-1], memory=memory)
