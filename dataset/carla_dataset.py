@@ -78,15 +78,14 @@ class CarlaDataset(Dataset):
         bbox_tgt = []
         for box in bboxes:
             x1, y1, x2, y2 = box["bbox_2d"]
-            xc = ((x2 - x2)/2)/W
-            yc = ((y2 - y1)/2)/H
+            xc = ((x2 + x1)/2)/W
+            yc = ((y2 + y1)/2)/H
             w = (x2 - x1)/W
             h = (y2 - y1)/H
             class_tgt.append(box["semantic_label"] - 12)
             bbox_tgt.append([xc, yc, w, h])
             
-        class_tgt = torch.tensor(class_tgt, dtype=torch.float32)
-        bbox_tgt = torch.tensor(bbox_tgt, dtype=torch.float32)
-        
+        class_tgt = torch.tensor(class_tgt, dtype=torch.long)
+        bbox_tgt = torch.tensor(bbox_tgt, dtype=torch.float32) 
             
         return img, class_tgt, bbox_tgt

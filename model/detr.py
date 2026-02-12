@@ -23,7 +23,7 @@ class DETR(nn.Module):
         bs, c, h, w = x.shape
         hs, memory = self.transformer(x, mask, self.query_embed, pos)
         hs, memory = hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
-        obj_class = self.class_embed(hs).sigmoid()
-        bbox = self.bbox_embed(hs)
+        obj_class = self.class_embed(hs)
+        bbox = self.bbox_embed(hs).sigmoid()
 
         return dict(obj_class=obj_class[-1], bbox=bbox[-1], memory=memory)
