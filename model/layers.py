@@ -110,7 +110,7 @@ class TransformerDecoderLayer(nn.Module):
 
 class TransformerDecoder(nn.Module):
 
-    def __init__(self, num_layers, embed_dim, num_heads, norm=None, dropout=0.1):
+    def __init__(self, num_layers, embed_dim, num_heads, norm=None, dropout=0.1, return_intermediate=False):
         super().__init__()
         self.norm = norm
         self.layers = nn.ModuleList(
@@ -119,15 +119,26 @@ class TransformerDecoder(nn.Module):
                 for _ in range(num_layers)
             ]
         )
+        self.return_intermediate = return_intermediate
 
     def forward(self, tgt, enc_out, pos, query_pos, enc_mask=None, dec_mask=None):
 
         output = tgt
+        intermediate = []
         for layer in self.layers:
             output = layer(output, enc_out, pos, query_pos, enc_mask, dec_mask)
+            if self.return_intermediate:
+                intermediate.append(self.norm(output) if self.norm is not None else output)
 
         if self.norm is not None:
             output = self.norm(output)
+            if self.return_intermediate:
+                intermediate.pop()
+                intermediate.append(output)
+                
+        if self.return_intermediate:
+            return torch.stack(intermediate)
+                
         return output.unsqueeze(0)
 
 
@@ -140,6 +151,7 @@ class Transformer(nn.Module):
         num_encoder_layers=6,
         num_decoder_layers=6,
         dropout=0.1,
+        return_intermediate_dec=False
     ):
         super().__init__()
         self.decoder_norm = nn.LayerNorm(d_model)
@@ -152,9 +164,12 @@ class Transformer(nn.Module):
             num_heads=nhead,
             norm=self.decoder_norm,
             dropout=dropout,
+            return_intermediate=return_intermediate_dec
         )
 
     def forward(self, x, mask, query_embed, pos_embd):
+        
+        bs, c, h, w = x.shape
         x = x.flatten(2).permute(2, 0, 1)
         pos = pos_embd.flatten(2).permute(2, 0, 1)
         mask = mask.flatten(1)
@@ -166,9 +181,9 @@ class Transformer(nn.Module):
 
         memory = self.encoder(x, pos, mask)
 
-        x = self.decoder(tgt, memory, pos, query_embed, enc_mask=mask)
+        hs = self.decoder(tgt, memory, pos, query_embed, enc_mask=mask)
 
-        return x, memory
+        return hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
 
 class MLP(nn.Module):
     """ Very simple multi-layer perceptron (also called FFN)"""

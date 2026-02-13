@@ -13,13 +13,13 @@ class ResnetBackbone(nn.Module):
         del self.backbone.avgpool 
         del self.backbone.fc
         
-    def forward(self, x, mask=None):
+    def forward(self, x, mask):
         outputs = {}
         for name, module in self.backbone.named_children():
             x = module(x)
             if name in self.return_layers:
                 outputs[self.return_layers[name]] = x
                 
-        if mask is not None:
-            outputs["mask"] = F.interpolate(mask[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
+
+        outputs["mask"] = F.interpolate(mask[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
         return outputs
