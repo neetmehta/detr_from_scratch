@@ -1,11 +1,71 @@
 dataset:
   name: CarlaDataset
   root_dir: F:\CARLA_0.9.16\PythonAPI\carla_data_tools\carla_dataset
-  img_size: [224, 224]
+  img_size: [512, 1376] 
+  num_workers: 2            # Default: 2
+
+# =========================
+# Model Configuration
+# =========================
+model:
+  # Backbone
+  # Paper: ResNet-101 with DC5 (dilation) gives the best performance (44.9 AP)
+  backbone: "resnet101"     # Changed from default 'resnet50' for best performance
+  dilation: true            # Enabled DC5 (Dilated C5 block) for higher resolution feature maps
+  position_embedding: "sine" # Choices: 'sine', 'learned'
+  masks: false              # Set to True if performing segmentation
+
+  # Transformer
+  enc_layers: 6
+  dec_layers: 6
+  dim_feedforward: 2048
+  hidden_dim: 256
+  dropout: 0.1
+  nheads: 8
+  num_queries: 100
+  pre_norm: false           # Default is False
 
 # =========================
 # Training Configuration
 # =========================
+training:
+  lr: 0.0001                # 1e-4
+  lr_backbone: 0.00001      # 1e-5 (Backbone usually requires lower LR)
+  batch_size: 2             # Paper uses 2 per GPU (adjust based on your VRAM)
+  weight_decay: 0.0001      # 1e-4
+  clip_max_norm: 0.1        # Gradient clipping
+  frozen_weights: null      # Path to pretrained weights if freezing
+  
+  # Epoch Schedule
+  # Paper: 500 epochs performs better than the standard 300
+  epochs: 500               
+  lr_drop: 400              # Drop LR after 400 epochs (for 500 epoch schedule)
 
+# =========================
+# Loss & Matcher Configuration
+# =========================
+loss:
+  aux_loss: true            # Deep supervision (loss at every decoder layer)
+  eos_coef: 0.1             # Relative weight for "No Object" class
+
+  # Matcher Costs (Hungarian Algorithm)
+  set_cost_class: 1.0
+  set_cost_bbox: 5.0
+  set_cost_giou: 2.0
+
+  # Loss Coefficients
+  mask_loss_coef: 1.0
+  dice_loss_coef: 1.0
+  bbox_loss_coef: 5.0
+  giou_loss_coef: 2.0
+
+# =========================
+# Runtime Configuration
+# =========================
 runtime:
-  device: cuda   # auto | cpu | cuda
+  device: cuda              # auto | cpu | cuda
+  output_dir: "output"      # Directory to save logs and checkpoints
+  seed: 42
+  resume: ""                # Path to checkpoint to resume from
+  start_epoch: 0
+  eval: false               # True for evaluation mode only
