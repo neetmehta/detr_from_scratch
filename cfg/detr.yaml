@@ -15,8 +15,8 @@ dataset:
 # =========================
 model:
   # Backbone Configuration
-  backbone: "resnet101"     # ResNet-101 with DC5 gives best performance (44.9 AP)
-  dilation: true            # DC5: Dilated C5 block for higher resolution features
+  backbone: "resnet50"     # ResNet-101 with DC5 gives best performance (44.9 AP)
+  dilation: false            # DC5: Dilated C5 block for higher resolution features
   return_layers: "layer4"   # Output from C5 block
   num_classes: 8            # Number of object classes (excl. background)
   pretrained_backbone: true # Use pretrained ResNet weights
@@ -35,6 +35,7 @@ model:
   positional_embedding:
     num_pos_feats: 128      # Positional embedding features (hidden_dim / 2)
     temperature: 10000      # Temperature for sine positional encoding
+    normalize: true         # Normalize positional encodings to [0, 1]
 
   # Return intermediate decoder outputs for auxiliary losses
   return_intermediate_dec: true

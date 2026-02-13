@@ -54,6 +54,7 @@ class Trainer:
         pos_embd = PositionEmbeddingSine(
             num_pos_feats=cfg.model.positional_embedding.num_pos_feats,
             temperature=cfg.model.positional_embedding.temperature,
+            normalize=cfg.model.positional_embedding.normalize,
         )
         
         # Initialize DETR model

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class TransformerEncoderLayer(nn.Module):
 
-    def __init__(self, embed_dim, num_heads, dropout=0.1):
+    def __init__(self, embed_dim, num_heads, dim_feedforward=2048, dropout=0.1):
         super().__init__()
         self.mha = nn.MultiheadAttention(
             embed_dim=embed_dim, num_heads=num_heads, dropout=dropout
@@ -15,10 +15,10 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.dropout1 = nn.Dropout(dropout)
         self.ffn = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim * 4),
+            nn.Linear(embed_dim, dim_feedforward),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(embed_dim * 4, embed_dim),
+            nn.Linear(dim_feedforward, embed_dim),
         )
 
     def forward(self, x, pos, mask=None):
@@ -42,11 +42,11 @@ class TransformerEncoderLayer(nn.Module):
 
 class TransformerEncoder(nn.Module):
 
-    def __init__(self, num_layers, embed_dim, num_heads, dropout=0.1):
+    def __init__(self, num_layers, embed_dim, num_heads, dim_feedforward=2048, dropout=0.1):
         super().__init__()
         self.layers = nn.ModuleList(
             [
-                TransformerEncoderLayer(embed_dim, num_heads, dropout)
+                TransformerEncoderLayer(embed_dim, num_heads, dim_feedforward=dim_feedforward, dropout=dropout)
                 for _ in range(num_layers)
             ]
         )
@@ -61,7 +61,7 @@ class TransformerEncoder(nn.Module):
 
 class TransformerDecoderLayer(nn.Module):
 
-    def __init__(self, embed_dim, num_heads, dropout=0.1):
+    def __init__(self, embed_dim, num_heads, dim_feedforward=2048, dropout=0.1):
         super().__init__()
         self.self_attn = nn.MultiheadAttention(
             embed_dim=embed_dim, num_heads=num_heads, dropout=dropout
@@ -74,10 +74,10 @@ class TransformerDecoderLayer(nn.Module):
         self.norm3 = nn.LayerNorm(embed_dim)
         self.dropout = nn.Dropout(dropout)
         self.ffn = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim * 4),
+            nn.Linear(embed_dim, dim_feedforward),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(embed_dim * 4, embed_dim),
+            nn.Linear(dim_feedforward, embed_dim),
         )
 
     def forward(self, tgt, enc_out, pos, query_pos, enc_mask=None, dec_mask=None):
@@ -110,12 +110,12 @@ class TransformerDecoderLayer(nn.Module):
 
 class TransformerDecoder(nn.Module):
 
-    def __init__(self, num_layers, embed_dim, num_heads, norm=None, dropout=0.1, return_intermediate=False):
+    def __init__(self, num_layers, embed_dim, num_heads, dim_feedforward=2048, norm=None, dropout=0.1, return_intermediate=False):
         super().__init__()
         self.norm = norm
         self.layers = nn.ModuleList(
             [
-                TransformerDecoderLayer(embed_dim, num_heads, dropout)
+                TransformerDecoderLayer(embed_dim, num_heads, dim_feedforward=dim_feedforward, dropout=dropout)
                 for _ in range(num_layers)
             ]
         )
@@ -150,18 +150,20 @@ class Transformer(nn.Module):
         nhead=8,
         num_encoder_layers=6,
         num_decoder_layers=6,
+        dim_feedforward=2048,
         dropout=0.1,
         return_intermediate_dec=False
     ):
         super().__init__()
         self.decoder_norm = nn.LayerNorm(d_model)
         self.encoder = TransformerEncoder(
-            num_encoder_layers, embed_dim=d_model, num_heads=nhead, dropout=dropout
+            num_encoder_layers, embed_dim=d_model, num_heads=nhead, dim_feedforward=dim_feedforward, dropout=dropout
         )
         self.decoder = TransformerDecoder(
             num_decoder_layers,
             embed_dim=d_model,
             num_heads=nhead,
+            dim_feedforward=dim_feedforward,
             norm=self.decoder_norm,
             dropout=dropout,
             return_intermediate=return_intermediate_dec
