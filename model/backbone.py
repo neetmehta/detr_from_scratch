@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class ResnetBackbone(nn.Module):
-    def __init__(self, resnet_model, return_layers, dcn=False):
+    def __init__(self, resnet_model: str, return_layers: dict, dcn=False):
         super(ResnetBackbone, self).__init__()
         self.backbone = getattr(models, resnet_model)(pretrained=True, replace_stride_with_dilation=[False, False, dcn], norm_layer=FrozenBatchNorm2d)
         self.return_layers = return_layers
