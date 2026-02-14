@@ -20,6 +20,7 @@ class DETR(nn.Module):
         self.query_embed = nn.Embedding(query_dim, hidden_dim)
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
+        self.num_classes = num_classes
 
     def forward(self, x, mask):
 

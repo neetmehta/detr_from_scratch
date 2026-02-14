@@ -24,7 +24,9 @@ class GenericDataset(Dataset):
         self.cfg = cfg
         root_dir = cfg.dataset.root_dir
         self.transforms = transforms.Compose([
+            transforms.Resize(800),
             transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
         self.samples = glob.glob(f"{root_dir}/*.jpg")
 

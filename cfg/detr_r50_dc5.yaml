@@ -1,0 +1,109 @@
+dataset:
+  name: CarlaDataset
+  root_dir: F:\CARLA_0.9.16\PythonAPI\carla_data_tools\carla_dataset
+  img_size: [256, 688] 
+  num_workers: 2
+  shuffle: true
+  pin_memory: true
+  drop_last: true
+  # Image normalization statistics (ImageNet defaults, adjust for CARLA if needed)
+  normalize_mean: [0.485, 0.456, 0.406]
+  normalize_std: [0.229, 0.224, 0.225]
+
+# =========================
+# Model Configuration
+# =========================
+model:
+  # Backbone Configuration
+  backbone: "resnet50"     # ResNet-101 with DC5 gives best performance (44.9 AP)
+  dilation: true            # DC5: Dilated C5 block for higher resolution features
+  return_layers: "layer4"   # Output from C5 block
+  num_classes: 91            # Number of object classes (excl. background)
+  pretrained_backbone: true # Use pretrained ResNet weights
+
+  # Transformer Configuration
+  hidden_dim: 256           # Transformer hidden dimension
+  nheads: 8                 # Number of attention heads
+  enc_layers: 6             # Number of encoder layers
+  dec_layers: 6             # Number of decoder layers
+  dim_feedforward: 2048     # FFN hidden dimension
+  dropout: 0.1              # Dropout rate
+  num_queries: 100          # Number of object queries
+  pre_norm: false           # Pre-normalization in transformer layers
+  
+  # Positional Encoding Configuration
+  positional_embedding:
+    num_pos_feats: 128      # Positional embedding features (hidden_dim / 2)
+    temperature: 10000      # Temperature for sine positional encoding
+    normalize: true         # Normalize positional encodings to [0, 1]
+
+  # Return intermediate decoder outputs for auxiliary losses
+  return_intermediate_dec: true
+
+# =========================
+# Training Configuration
+# =========================
+training:
+  # Learning rates
+  lr: 0.0001                # 1e-4 main learning rate
+  lr_backbone: 0.00001      # 1e-5 backbone learning rate (lower for pretrained)
+  weight_decay: 0.0001      # 1e-4 weight decay
+  
+  # Batch and epochs
+  batch_size: 4             # Paper uses 2 per GPU
+  epochs: 500               # Total training epochs
+  
+  # Learning rate schedule
+  lr_drop: 400              # Drop LR after this many epochs
+  warmup_epochs: 0          # Number of warmup epochs (0 to disable)
+  
+  # Optimization
+  clip_max_norm: 0.1        # Gradient clipping max norm
+  gradient_accumulation_steps: 1  # For accumulating gradients
+  
+  # Data loading
+  shuffle: true
+  pin_memory: true
+  drop_last: true
+  prefetch_factor: 2        # DataLoader prefetch factor for efficiency
+  
+  # Checkpointing
+  log_dir: null             # Defaults to 'runs/current_time' if null
+  resume: ""                # Path to checkpoint to resume from
+  save_interval: 1          # Save checkpoint every N epochs (0 = best only)
+  checkpoint_dir: "checkpoints"  # Directory to save checkpoints
+
+# =========================
+# Loss & Matcher Configuration
+# =========================
+loss:
+  eos_coef: 0.1             # Relative weight for "No Object" class
+
+  # Hungarian Matcher Costs
+  matcher_cost_class: 1.0   # Cost weight for class mismatch
+  matcher_cost_bbox: 5.0    # Cost weight for bbox L1 distance
+  matcher_cost_giou: 2.0    # Cost weight for GIoU mismatch
+
+  # Loss Coefficients (weights in total loss)
+  weight_dict:
+    loss_ce: 1.0            # Cross-entropy loss weight
+    loss_bbox: 5.0          # L1 bbox loss weight
+    loss_giou: 2.0          # GIoU loss weight
+
+# =========================
+# TensorBoard Configuration
+# =========================
+tensorboard:
+  log_loss_freq: 5         # Log loss to TensorBoard every N steps
+  log_img_freq: 1         # Log images with bboxes every N steps
+  histogram_freq: 0         # Log histograms every N steps (0 to disable)
+
+# =========================
+# Runtime Configuration
+# =========================
+runtime:
+  device: auto              # auto | cpu | cuda
+  seed: 42                  # Random seed for reproducibility
+  num_workers: 0            # CPU workers for DataLoader
+  fp16: false               # Use mixed precision training (experimental)
+  cudnn_benchmark: true     # Enable cuDNN auto-tuner for performance
