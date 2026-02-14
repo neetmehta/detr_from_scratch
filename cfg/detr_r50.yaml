@@ -45,8 +45,11 @@ model:
 # =========================
 training:
   # Learning rates
-  lr: 0.0001                # 1e-4 main learning rate
-  lr_backbone: 0.00001      # 1e-5 backbone learning rate (lower for pretrained)
+  lr: 0.00001                # 1e-4 main learning rate
+  lr_backbone: 0.000001      # 1e-5 backbone learning rate (lower for pretrained)
+  lr_transformer: 0.00001    # 1e-4 transformer learning rate (same as main)
+  lr_class_embed: 0.0001     # 1e-4 classification head learning rate
+  lr_bbox_embed: 0.0001      # 1e-4 bbox head
   weight_decay: 0.0001      # 1e-4 weight decay
   
   # Batch and epochs

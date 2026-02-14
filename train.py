@@ -116,6 +116,30 @@ class Trainer:
                 ],
                 "lr": cfg.training.lr_backbone,
             },
+                        {
+                "params": [
+                    p
+                    for n, p in self.model.named_parameters()
+                    if "transformer" in n and p.requires_grad
+                ],
+                "lr": cfg.training.lr_transformer,
+            },
+                                    {
+                "params": [
+                    p
+                    for n, p in self.model.named_parameters()
+                    if "class_embed" in n and p.requires_grad
+                ],
+                "lr": cfg.training.lr_class_embed,
+            },
+                        {
+                "params": [
+                    p
+                    for n, p in self.model.named_parameters()
+                    if "bbox_embed" in n and p.requires_grad
+                ],
+                "lr": cfg.training.lr_bbox_embed,
+            },
         ]
 
         self.optimizer = torch.optim.AdamW(
