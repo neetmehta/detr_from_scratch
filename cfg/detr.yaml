@@ -15,10 +15,10 @@ dataset:
 # =========================
 model:
   # Backbone Configuration
-  backbone: "resnet50"     # ResNet-101 with DC5 gives best performance (44.9 AP)
-  dilation: false            # DC5: Dilated C5 block for higher resolution features
+  backbone: "resnet101"     # ResNet-101 with DC5 gives best performance (44.9 AP)
+  dilation: true            # DC5: Dilated C5 block for higher resolution features
   return_layers: "layer4"   # Output from C5 block
-  num_classes: 8            # Number of object classes (excl. background)
+  num_classes: 91            # Number of object classes (excl. background)
   pretrained_backbone: true # Use pretrained ResNet weights
 
   # Transformer Configuration

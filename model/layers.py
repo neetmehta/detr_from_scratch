@@ -155,7 +155,7 @@ class Transformer(nn.Module):
         return_intermediate_dec=False
     ):
         super().__init__()
-        self.decoder_norm = nn.LayerNorm(d_model)
+        decoder_norm = nn.LayerNorm(d_model)
         self.encoder = TransformerEncoder(
             num_encoder_layers, embed_dim=d_model, num_heads=nhead, dim_feedforward=dim_feedforward, dropout=dropout
         )
@@ -164,7 +164,7 @@ class Transformer(nn.Module):
             embed_dim=d_model,
             num_heads=nhead,
             dim_feedforward=dim_feedforward,
-            norm=self.decoder_norm,
+            norm=decoder_norm,
             dropout=dropout,
             return_intermediate=return_intermediate_dec
         )
