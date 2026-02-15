@@ -72,9 +72,11 @@ training:
   
   # Checkpointing
   log_dir: null             # Defaults to 'runs/current_time' if null
-  resume: ""                # Path to checkpoint to resume from
+  resume: true                # Path to checkpoint to resume from
+  checkpoint_path: "checkpoints"  # Directory to save checkpoints
   save_interval: 1          # Save checkpoint every N epochs (0 = best only)
-  checkpoint_dir: "checkpoints"  # Directory to save checkpoints
+  load_pretrained: true         # Whether to load pretrained weights (e.g. from Torch Hub)
+  pretrained_weights_path: "ckpts/detr_r101_dc5.pth"    # Path to pretrained weights (if 
 
 # =========================
 # Loss & Matcher Configuration

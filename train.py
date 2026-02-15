@@ -66,6 +66,19 @@ class Trainer:
             transformer=transformer,
             hidden_dim=cfg.model.hidden_dim,
         ).to(device)
+        
+        if cfg.training.load_pretrained:
+            state_dict = torch.load(cfg.training.pretrained_weights_path, map_location=device)
+            for k,v in state_dict.items():
+                if 'class_embed' in k:
+                    print(f"Skipping loading {k} due to shape mismatch")
+                    state_dict[k] = self.model.state_dict()[k]
+                elif 'bbox_embed' in k:
+                    print(f"Skipping loading {k} due to shape mismatch")
+                    state_dict[k] = self.model.state_dict()[k]
+                    
+            self.model.load_state_dict(state_dict, strict=False)
+            print(f"Loaded pretrained weights from {cfg.training.pretrained_weights_path}")
 
         # --- Loss Function Setup ---
         # Initialize Hungarian Matcher for bipartite matching
@@ -104,7 +117,7 @@ class Trainer:
                 "params": [
                     p
                     for n, p in self.model.named_parameters()
-                    if "backbone" not in n and p.requires_grad
+                    if "backbone" not in n and "transformer" not in n and "class_embed" not in n and "bbox_embed" not in n and p.requires_grad
                 ],
                 "lr": cfg.training.lr,
             },
@@ -177,6 +190,17 @@ class Trainer:
         # --- Logging Frequencies ---
         self.log_loss_freq = cfg.tensorboard.log_loss_freq       # Log loss every N steps
         self.log_img_freq = cfg.tensorboard.log_img_freq         # Log images every N steps
+        self.start_epoch = 0
+        if cfg.training.resume:
+            checkpoint_path = cfg.training.checkpoint_path
+            if os.path.exists(checkpoint_path):
+                state_dict = torch.load(checkpoint_path, map_location=device)
+                self.model.load_state_dict(state_dict['model'], strict=True)
+                self.optimizer.load_state_dict(state_dict['optimizer'])
+                start_epoch = state_dict.get('epoch', 0) + 1
+                print(f"Resumed training from checkpoint: {checkpoint_path} at epoch {start_epoch}")
+            else:
+                print(f"No checkpoint found at {checkpoint_path}. Starting fresh training.")
 
     def train(self):
         num_batches = len(self.dataloader)
@@ -186,7 +210,7 @@ class Trainer:
         # Initial learning rate step
         self.lr_scheduler.step()
 
-        for epoch in range(self.num_epochs):
+        for epoch in range(self.start_epoch, self.num_epochs):
             # Set model to training mode
             self.model.train()
 

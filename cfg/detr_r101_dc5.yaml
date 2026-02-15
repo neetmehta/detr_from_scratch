@@ -1,6 +1,6 @@
 dataset:
   name: CarlaDataset
-  root_dir: F:\CARLA_0.9.16\PythonAPI\carla_data_tools\carla_dataset
+  root_dir: F:\\CARLA_0.9.16\\PythonAPI\\carla_data_tools\\carla_dataset
   img_size: [256, 688] 
   num_workers: 2
   shuffle: true
@@ -18,7 +18,7 @@ model:
   backbone: "resnet101"     # ResNet-101 with DC5 gives best performance (44.9 AP)
   dilation: true            # DC5: Dilated C5 block for higher resolution features
   return_layers: "layer4"   # Output from C5 block
-  num_classes: 91            # Number of object classes (excl. background)
+  num_classes: 8            # Number of object classes (excl. background)
   pretrained_backbone: true # Use pretrained ResNet weights
 
   # Transformer Configuration
@@ -48,12 +48,12 @@ training:
   lr: 0.00001                # 1e-4 main learning rate
   lr_backbone: 0.000001      # 1e-5 backbone learning rate (lower for pretrained)
   lr_transformer: 0.00001    # 1e-4 transformer learning rate (same as main)
-  lr_class_embed: 0.0001     # 1e-4 classification head learning rate
-  lr_bbox_embed: 0.0001      # 1e-4 bbox head
+  lr_class_embed: 0.00001     # 1e-4 classification head learning rate
+  lr_bbox_embed: 0.00001      # 1e-4 bbox head
   weight_decay: 0.0001      # 1e-4 weight decay
   
   # Batch and epochs
-  batch_size: 4             # Paper uses 2 per GPU
+  batch_size: 2             # Paper uses 2 per GPU
   epochs: 500               # Total training epochs
   
   # Learning rate schedule
@@ -72,11 +72,11 @@ training:
   
   # Checkpointing
   log_dir: null             # Defaults to 'runs/current_time' if null
-  resume: ""                # Path to checkpoint to resume from
+  resume: true                # Path to checkpoint to resume from
   save_interval: 1          # Save checkpoint every N epochs (0 = best only)
-  checkpoint_dir: "checkpoints"  # Directory to save checkpoints
-  load_pretrained: false         # Whether to load pretrained weights (e.g. from Torch Hub)
-  pretrained_weights_path: "ckpts/detr_r101.pth"    # Path to pretrained weights (if load_pretrained is true)
+  checkpoint_path: "ckpts/model_34.pth"  # Directory to save checkpoints
+  load_pretrained: true         # Whether to load pretrained weights (e.g. from Torch Hub)
+  pretrained_weights_path: "ckpts/detr_r101_dc5.pth"    # Path to pretrained weights (if load_pretrained is true)
 # =========================
 # Loss & Matcher Configuration
 # =========================
