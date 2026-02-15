@@ -334,64 +334,76 @@ class Trainer:
             batch_size = inputs['img'].shape[0]
             num_samples = min(batch_size, 4)  # Visualize first 4 samples
             
-            # Get normalization stats from config
-            norm_mean = torch.tensor(self.cfg.dataset.normalize_mean).view(3, 1, 1).to(self.device)
-            norm_std = torch.tensor(self.cfg.dataset.normalize_std).view(3, 1, 1).to(self.device)
-            
-            fig_list = []
-            
             for sample_idx in range(num_samples):
-                # Get image and denormalize
-                img = inputs['img'][sample_idx].clone()
-                # img = img * norm_std + norm_mean
+                # Get image and ensure it's on CPU
+                img = inputs['img'][sample_idx].clone().detach()
+                if img.is_cuda:
+                    img = img.cpu()
+                
+                # Denormalize if needed - clamp to valid range
                 img = torch.clamp(img, 0, 1)
                 
                 # Get image dimensions
                 _, img_h, img_w = img.shape
                 
-                # Convert to numpy for matplotlib
-                img_np = img.permute(1, 2, 0).cpu().numpy()
+                # Convert to numpy for visualization (ensure CPU)
+                img_np = img.permute(1, 2, 0).numpy()
                 
-                # Create figure
-                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                # Ensure numpy is uint8 and on correct value range for better visualization
+                if img_np.dtype != np.uint8:
+                    img_np = (img_np * 255).astype(np.uint8)
+                
+                # Create figure with higher DPI for better quality
+                fig, ax = plt.subplots(1, 1, figsize=(14, 10), dpi=100)
                 ax.imshow(img_np)
                 
                 # --- Draw Ground Truth Boxes ---
-                gt_boxes = inputs['boxes'][sample_idx]
-                gt_labels = inputs['labels'][sample_idx]
+                gt_boxes = inputs['boxes'][sample_idx].detach().cpu()
+                gt_labels = inputs['labels'][sample_idx].detach().cpu()
                 
                 for box, label in zip(gt_boxes, gt_labels):
                     # Convert from [xc, yc, w, h] normalized to pixel coordinates
-                    xc, yc, w, h = box
+                    xc, yc, w, h = [val.item() for val in box]
                     x1 = (xc - w/2) * img_w
                     y1 = (yc - h/2) * img_h
                     width = w * img_w
                     height = h * img_h
                     
-                    # Draw rectangle
-                    rect = patches.Rectangle(
-                        (x1, y1), width, height,
-                        linewidth=2, edgecolor='green', facecolor='none',
-                        label='Ground Truth'
-                    )
-                    ax.add_patch(rect)
-                    
-                    # Add label text
-                    class_name = f"Class {label.item()}"
-                    ax.text(x1, y1 - 5, class_name, color='green', fontsize=8,
-                           bbox=dict(facecolor='green', alpha=0.3))
+                    # Ensure coordinates are within image bounds
+                    if width > 0 and height > 0:
+                        # Draw rectangle
+                        rect = patches.Rectangle(
+                            (x1, y1), width, height,
+                            linewidth=3, edgecolor='lime', facecolor='none',
+                            label='Ground Truth' if label == gt_labels[0] else ""
+                        )
+                        ax.add_patch(rect)
+                        
+                        # Add label text
+                        class_name = f"GT: {int(label.item())}"
+                        ax.text(x1, max(0, y1 - 10), class_name, color='lime', fontsize=10,
+                               fontweight='bold', bbox=dict(facecolor='black', alpha=0.7, pad=2))
                 
                 # --- Draw Predicted Boxes ---
-                pred_probs = torch.softmax(outputs['obj_class'][sample_idx], dim=-1)
-                pred_boxes = outputs['bbox'][sample_idx]
+                # Ensure tensors are on CPU
+                pred_logits = outputs['obj_class'][sample_idx].detach().cpu()
+                pred_boxes = outputs['bbox'][sample_idx].detach().cpu()
+                
+                # Compute softmax probabilities
+                pred_probs = torch.softmax(pred_logits, dim=-1)
                 
                 # Filter predictions by confidence (class != background, i.e., not last class)
-                bg_class = self.cfg.model.num_classes
-                pred_conf = pred_probs[:, :bg_class].max(dim=-1)  # Max confidence excl. background
+                num_classes = self.cfg.model.num_classes
+                
+                # Get max confidence for non-background classes
+                if num_classes > 0:
+                    pred_conf_scores = pred_probs[:, :num_classes].max(dim=-1)
+                else:
+                    pred_conf_scores = pred_probs.max(dim=-1)
                 
                 # Keep boxes with confidence > 0.5
                 conf_threshold = 0.5
-                valid_mask = pred_conf.values > conf_threshold
+                valid_mask = pred_conf_scores.values > conf_threshold
                 
                 for pred_idx in range(pred_boxes.shape[0]):
                     if not valid_mask[pred_idx]:
@@ -399,53 +411,57 @@ class Trainer:
                     
                     # Get box and class
                     box = pred_boxes[pred_idx]
-                    class_idx = pred_conf.indices[pred_idx].item()
-                    confidence = pred_conf.values[pred_idx].item()
+                    class_idx = pred_conf_scores.indices[pred_idx].item()
+                    confidence = pred_conf_scores.values[pred_idx].item()
                     
                     # Convert from [xc, yc, w, h] normalized to pixel coordinates
-                    xc, yc, w, h = box
+                    xc, yc, w, h = [val.item() for val in box]
                     x1 = (xc - w/2) * img_w
                     y1 = (yc - h/2) * img_h
                     width = w * img_w
                     height = h * img_h
                     
-                    # Draw rectangle
-                    rect = patches.Rectangle(
-                        (x1, y1), width, height,
-                        linewidth=2, edgecolor='red', facecolor='none',
-                        linestyle='--', label='Prediction'
-                    )
-                    ax.add_patch(rect)
-                    
-                    # Add label text with confidence
-                    class_name = f"C{class_idx} {confidence:.2f}"
-                    ax.text(x1, y1 + 15, class_name, color='red', fontsize=8,
-                           bbox=dict(facecolor='red', alpha=0.3))
+                    # Ensure coordinates are within image bounds
+                    if width > 0 and height > 0:
+                        # Draw rectangle
+                        rect = patches.Rectangle(
+                            (x1, y1), width, height,
+                            linewidth=3, edgecolor='red', facecolor='none',
+                            linestyle='--', label='Prediction' if pred_idx == 0 else ""
+                        )
+                        ax.add_patch(rect)
+                        
+                        # Add label text with confidence
+                        class_name = f"P: {class_idx} ({confidence:.2f})"
+                        ax.text(x1, y1 + 20, class_name, color='red', fontsize=10,
+                               fontweight='bold', bbox=dict(facecolor='black', alpha=0.7, pad=2))
                 
-                ax.set_title(f"Sample {sample_idx + 1} - Green: GT, Red: Pred")
-                ax.legend(loc='upper right')
+                ax.set_title(f"Sample {sample_idx + 1} | Green: Ground Truth, Red: Predictions", fontsize=12, fontweight='bold')
+                ax.legend(loc='upper right', fontsize=10)
                 ax.axis('off')
                 
-                fig_list.append(fig)
-            
-            # Log all figures to TensorBoard
-            for fig_idx, fig in enumerate(fig_list):
-                # Convert matplotlib figure to tensor
+                # Convert figure to tensor for TensorBoard
                 fig.canvas.draw()
-                img_array = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
-                img_array = img_array.reshape(fig.canvas.get_width_height()[::-1] + (4,))
-                img_array = img_array[:, :, 1:4]  # Drop alpha channel
-                img_tensor = transforms.ToTensor()(img_array)
                 
+                # Get figure image as numpy array
+                width, height = fig.canvas.get_width_height()
+                img_array = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+                img_array = img_array.reshape(height, width, 4)  # ARGB format
+                img_array = img_array[:, :, 1:]  # Remove alpha channel (A, R, G, B) -> (R, G, B)
+                
+                # Convert to tensor (H, W, C) -> (C, H, W)
+                img_tensor = torch.from_numpy(img_array).permute(2, 0, 1).float() / 255.0
+                
+                # Log to TensorBoard
                 self.writer.add_image(
-                    f"Visualizations/Sample_{fig_idx}",
+                    f"Visualizations/Sample_{sample_idx}",
                     img_tensor,
                     global_step=step
                 )
                 
                 plt.close(fig)
             
-            print(f"Logged visualization at step {step}")
+            print(f"Logged {num_samples} visualizations at step {step}")
             
         except Exception as e:
             print(f"Error during visualization logging: {e}")
